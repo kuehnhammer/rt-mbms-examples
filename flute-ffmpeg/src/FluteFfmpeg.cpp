@@ -52,8 +52,14 @@ void FluteFfmpeg::send_by_flute(const std::string &path, std::string content_typ
   } else if (path.find(".m3u8") != std::string::npos) {
     content_type = HLS_CONTENT_TYPE;
   }
+  std::string stripped_path = path;
+  size_t pos = stripped_path.find(_watchfolder_path);
+  if (pos != std::string::npos)
+  {
+    stripped_path.erase(pos, _watchfolder_path.length());
+  }
 
-  uint32_t toi = _transmitter->send(path,
+  uint32_t toi = _transmitter->send(stripped_path,
                                     content_type,
                                     _transmitter->seconds_since_epoch() + 60, // 1 minute from now
                                     buffer,
@@ -66,6 +72,7 @@ void FluteFfmpeg::send_by_flute(const std::string &path, std::string content_typ
 void FluteFfmpeg::process_file(const Poco::DirectoryWatcher::DirectoryEvent &directoryEvent) {
   std::string path = directoryEvent.item.path();
 
+  /*
   if (!_sa_sent) {
     send_service_announcement();
     _sa_sent = true;
@@ -85,13 +92,13 @@ void FluteFfmpeg::process_file(const Poco::DirectoryWatcher::DirectoryEvent &dir
       std::chrono::duration<double, std::milli>(now - _last_send_init_time).count() > _resend_dash_init_in_sec * 1000) {
     send_dash_init_segments();
   }
-
+*/
   send_by_flute(path);
 }
 
-void FluteFfmpeg::on_file_renamed(const Poco::DirectoryWatcher::DirectoryEvent &changeEvent) {
+void FluteFfmpeg::on_file_renamed(const Poco::DirectoryWatcher::DirectoryEvent &changeEvent, int channel) {
   std::string path = changeEvent.item.path();
-  spdlog::info("File renamed: Name: {} ", path);
+  spdlog::info("CH {} - File renamed: Name: {} ", channel, path);
 
   process_file(changeEvent);
 }
@@ -124,9 +131,11 @@ void FluteFfmpeg::send_dash_init_segments() {
 void FluteFfmpeg::register_directory_watcher() {
   spdlog::info("Setting up file watcher at {}", _watchfolder_path);
   try {
-    auto *watcher = new Poco::DirectoryWatcher(_watchfolder_path);
+    auto *watcher = new Poco::DirectoryWatcher(_watchfolder_path + "ch1/");
+    watcher->itemMovedTo += Poco::delegate(this, &FluteFfmpeg::on_file_renamed1);
 
-    watcher->itemMovedTo += Poco::delegate(this, &FluteFfmpeg::on_file_renamed);
+    auto *watcher2 = new Poco::DirectoryWatcher(_watchfolder_path + "ch2/");
+    watcher2->itemMovedTo += Poco::delegate(this, &FluteFfmpeg::on_file_renamed2);
   }
   catch (const Poco::FileNotFoundException &error) {
     spdlog::error("Path at {} does not exist. Please create the path first", _watchfolder_path);

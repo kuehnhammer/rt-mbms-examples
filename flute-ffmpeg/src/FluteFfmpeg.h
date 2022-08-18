@@ -40,7 +40,11 @@ private:
   std::string DASH_CONTENT_TYPE = "application/dash+xml";
   std::string HLS_CONTENT_TYPE = "application/x-mpegURL";
 
-  void on_file_renamed(const Poco::DirectoryWatcher::DirectoryEvent &changeEvent);
+  void on_file_renamed(const Poco::DirectoryWatcher::DirectoryEvent &changeEvent, int channel);
+  void on_file_renamed1(const Poco::DirectoryWatcher::DirectoryEvent &changeEvent) 
+    { on_file_renamed(changeEvent, 1); };
+  void on_file_renamed2(const Poco::DirectoryWatcher::DirectoryEvent &changeEvent)
+    { on_file_renamed(changeEvent, 2); };
 
   void process_file(const Poco::DirectoryWatcher::DirectoryEvent &directoryEvent);
 
